@@ -1,0 +1,94 @@
+package mcm.app.controller;
+
+import mcm.app.dto.*;
+import mcm.app.entity.User;
+import mcm.app.service.AuthService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    @Autowired
+    private AuthService authService;
+
+    // --- Login ---
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        try {
+            String token = authService.login(request);
+
+            ResponseCookie cookie = ResponseCookie.from("JWT_TOKEN", token)
+                    .httpOnly(true)
+                    .secure(false)      // set true in production
+                    .path("/")
+                    .maxAge(86400)      // 1 day
+                    .sameSite("Strict")
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(Map.of("message", "Login successful"));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    // --- Registration ---
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody SignupRequest request) {
+        try {
+            String message = authService.register(request);
+            return ResponseEntity.ok(Map.of("message", message));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    // --- Logout ---
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        ResponseCookie cookie = ResponseCookie.from("JWT_TOKEN", "")
+                .httpOnly(true)
+                .secure(false)      // true in production
+                .path("/")
+                .maxAge(0)          // delete cookie
+                .sameSite("Strict")
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(Map.of("message", "Logged out successfully"));
+    }
+
+    // --- Get current authenticated user ---
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Not authenticated"));
+        }
+
+        User user = authService.getCurrentUser(authentication);
+        return ResponseEntity.ok(Map.of(
+                "id", user.getId(),
+                "fullName", user.getFullName(),
+                "email", user.getEmail(),
+                "roles", user.getRoles()
+        ));
+    }
+
+    // --- Global Exception Handler ---
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleExceptions(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", ex.getMessage()));
+    }
+}
