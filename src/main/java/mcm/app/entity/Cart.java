@@ -3,6 +3,7 @@ package mcm.app.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
@@ -11,6 +12,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Cart {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,6 +23,6 @@ public class Cart {
 
     private BigDecimal totalPrice = BigDecimal.ZERO;
 
-    @OneToMany(mappedBy="cart", cascade=CascadeType.ALL)
-    private Set<CartItem> items;
+    @OneToMany(mappedBy="cart", cascade=CascadeType.ALL, orphanRemoval = true)
+    private Set<CartItem> items = new HashSet<>();
 }

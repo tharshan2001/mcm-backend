@@ -17,6 +17,7 @@ public class CartController {
     @Autowired
     private CartService cartService;
 
+    // Add product to cart
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/add")
     public ResponseEntity<CartResponseDTO> addToCart(
@@ -24,9 +25,12 @@ public class CartController {
             @RequestBody AddToCartRequest request
     ) {
         User user = principal.getUser();
-        return ResponseEntity.ok(cartService.addToCart(user, request.getProductId(), request.getQuantity()));
+        return ResponseEntity.ok(
+                cartService.addToCart(user, request.getProductId(), request.getQuantity())
+        );
     }
 
+    // Increase item quantity
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/increase/{productId}")
     public ResponseEntity<CartResponseDTO> increaseItem(
@@ -37,6 +41,7 @@ public class CartController {
         return ResponseEntity.ok(cartService.increaseItem(user, productId));
     }
 
+    // Decrease item quantity
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/decrease/{productId}")
     public ResponseEntity<CartResponseDTO> decreaseItem(
@@ -47,6 +52,7 @@ public class CartController {
         return ResponseEntity.ok(cartService.decreaseItem(user, productId));
     }
 
+    // View cart
     @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/view")
     public ResponseEntity<CartResponseDTO> viewCart(
@@ -54,14 +60,5 @@ public class CartController {
     ) {
         User user = principal.getUser();
         return ResponseEntity.ok(cartService.getCart(user));
-    }
-
-    @PreAuthorize("hasRole('CUSTOMER')")
-    @PostMapping("/checkout")
-    public ResponseEntity<CartResponseDTO> checkout(
-            @AuthenticationPrincipal CustomUserDetails principal
-    ) {
-        User user = principal.getUser();
-        return ResponseEntity.ok(cartService.checkout(user));
     }
 }

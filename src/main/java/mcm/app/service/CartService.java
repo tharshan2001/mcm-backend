@@ -1,10 +1,17 @@
 package mcm.app.service;
 
-import mcm.app.dto.*;
-import mcm.app.entity.*;
-import mcm.app.repository.*;
+import mcm.app.dto.CartItemResponseDTO;
+import mcm.app.dto.CartResponseDTO;
+import mcm.app.entity.Cart;
+import mcm.app.entity.CartItem;
+import mcm.app.entity.Product;
+import mcm.app.entity.User;
+import mcm.app.repository.CartItemRepository;
+import mcm.app.repository.CartRepository;
+import mcm.app.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -107,25 +114,6 @@ public class CartService {
         recalcTotal(cart);
 
         return mapToDto(cart);
-    }
-
-    // Checkout
-    public CartResponseDTO checkout(User user) {
-        Cart cart = cartRepository.findByUser(user)
-                .orElseThrow(() -> new RuntimeException("Cart not found"));
-
-        if (cart.getItems() == null || cart.getItems().isEmpty()) {
-            throw new RuntimeException("Cart is empty");
-        }
-
-        // Here you could implement actual order creation & payment logic
-
-        // For demo: clear cart after checkout
-        cart.getItems().clear();
-        cart.setTotalPrice(BigDecimal.ZERO);
-        Cart savedCart = cartRepository.save(cart);
-
-        return mapToDto(savedCart);
     }
 
     // Utility: recalc total price
