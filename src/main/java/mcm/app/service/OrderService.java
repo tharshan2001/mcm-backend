@@ -4,7 +4,6 @@ import mcm.app.entity.*;
 import mcm.app.repository.CartItemRepository;
 import mcm.app.repository.CartRepository;
 import mcm.app.repository.OrderRepository;
-import mcm.app.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -24,14 +23,8 @@ public class OrderService {
     @Autowired
     private CartItemRepository cartItemRepository;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    // Place an order for a user
-    public Order placeOrder(Long userId, String shippingAddress) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+    // Place order after successful payment
+    public Order placeOrder(User user, String shippingAddress) {
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("Cart is empty"));
 
@@ -72,9 +65,7 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    public List<Order> getOrdersByUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public List<Order> getOrdersByUser(User user) {
         return orderRepository.findByUser(user);
     }
 

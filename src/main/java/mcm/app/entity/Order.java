@@ -3,6 +3,7 @@ package mcm.app.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.Set;
 import java.time.LocalDateTime;
 
@@ -34,6 +35,6 @@ public class Order {
 
     private String returnStatus; // REQUESTED | APPROVED | REJECTED | REFUNDED
 
-    @OneToMany(mappedBy="order", cascade=CascadeType.ALL)
-    private Set<OrderItem> items;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Set<OrderItem> items = new HashSet<>();
 }

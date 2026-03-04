@@ -1,15 +1,13 @@
 package mcm.app.service;
 
+import mcm.app.dto.*;
 import mcm.app.entity.*;
-import mcm.app.repository.CartItemRepository;
-import mcm.app.repository.CartRepository;
-import mcm.app.repository.ProductRepository;
-import mcm.app.repository.UserRepository;
+import mcm.app.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class CartService {
@@ -18,36 +16,141 @@ public class CartService {
     private CartRepository cartRepository;
 
     @Autowired
-    private CartItemRepository cartItemRepository;
-
-    @Autowired
     private ProductRepository productRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    private CartItemRepository cartItemRepository;
 
-    public Cart addToCart(Long userId, Long productId, int quantity) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-        Product product = productRepository.findById(productId).orElseThrow(() -> new RuntimeException("Product not found"));
+    // Add product to cart
+    public CartResponseDTO addToCart(User user, Long productId, int quantity) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        Cart cart = cartRepository.findByUser(user).orElse(new Cart());
-        cart.setUser(user);
+        Cart cart = cartRepository.findByUser(user)
+                .orElseGet(() -> {
+                    Cart newCart = new Cart();
+                    newCart.setUser(user);
+                    return cartRepository.save(newCart);
+                });
 
-        CartItem item = new CartItem();
-        item.setCart(cart);
-        item.setProduct(product);
-        item.setQuantity(quantity);
-        item.setPrice(product.getPrice().multiply(BigDecimal.valueOf(quantity)));
+        if (cart.getItems() == null) cart.setItems(new java.util.HashSet<>());
 
-        cartItemRepository.save(item);
+        Optional<CartItem> existingItem = cart.getItems().stream()
+                .filter(item -> item.getProduct().getId().equals(productId))
+                .findFirst();
 
-        // Update total price
-        cart.setTotalPrice(cart.getItems() == null ? item.getPrice() :
-                cart.getItems().stream()
-                        .map(CartItem::getPrice)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add)
-                        .add(item.getPrice()));
+        if (existingItem.isPresent()) {
+            CartItem item = existingItem.get();
+            item.setQuantity(item.getQuantity() + quantity);
+            item.setPrice(product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+        } else {
+            CartItem newItem = new CartItem();
+            newItem.setCart(cart);
+            newItem.setProduct(product);
+            newItem.setQuantity(quantity);
+            newItem.setPrice(product.getPrice().multiply(BigDecimal.valueOf(quantity)));
+            cart.getItems().add(newItem);
+        }
 
-        return cartRepository.save(cart);
+        recalcTotal(cart);
+        Cart savedCart = cartRepository.save(cart);
+        return mapToDto(savedCart);
+    }
+
+    // Increase quantity
+    public CartResponseDTO increaseItem(User user, Long productId) {
+        return changeItemQuantity(user, productId, 1);
+    }
+
+    // Decrease quantity
+    public CartResponseDTO decreaseItem(User user, Long productId) {
+        return changeItemQuantity(user, productId, -1);
+    }
+
+    private CartResponseDTO changeItemQuantity(User user, Long productId, int delta) {
+        Cart cart = cartRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        if (cart.getItems() == null || cart.getItems().isEmpty()) {
+            throw new RuntimeException("Cart is empty");
+        }
+
+        CartItem item = cart.getItems().stream()
+                .filter(i -> i.getProduct().getId().equals(productId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Product not found in cart"));
+
+        int newQuantity = item.getQuantity() + delta;
+
+        if (newQuantity <= 0) {
+            cart.getItems().remove(item);
+        } else {
+            item.setQuantity(newQuantity);
+            item.setPrice(item.getProduct().getPrice().multiply(BigDecimal.valueOf(newQuantity)));
+        }
+
+        recalcTotal(cart);
+        Cart savedCart = cartRepository.save(cart);
+        return mapToDto(savedCart);
+    }
+
+    // Get user's cart
+    public CartResponseDTO getCart(User user) {
+        Cart cart = cartRepository.findByUser(user)
+                .orElseGet(() -> {
+                    Cart newCart = new Cart();
+                    newCart.setUser(user);
+                    return cartRepository.save(newCart);
+                });
+
+        if (cart.getItems() == null) cart.setItems(new java.util.HashSet<>());
+        recalcTotal(cart);
+
+        return mapToDto(cart);
+    }
+
+    // Checkout
+    public CartResponseDTO checkout(User user) {
+        Cart cart = cartRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("Cart not found"));
+
+        if (cart.getItems() == null || cart.getItems().isEmpty()) {
+            throw new RuntimeException("Cart is empty");
+        }
+
+        // Here you could implement actual order creation & payment logic
+
+        // For demo: clear cart after checkout
+        cart.getItems().clear();
+        cart.setTotalPrice(BigDecimal.ZERO);
+        Cart savedCart = cartRepository.save(cart);
+
+        return mapToDto(savedCart);
+    }
+
+    // Utility: recalc total price
+    private void recalcTotal(Cart cart) {
+        BigDecimal total = cart.getItems().stream()
+                .map(CartItem::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        cart.setTotalPrice(total);
+    }
+
+    // Utility: map to DTO
+    private CartResponseDTO mapToDto(Cart cart) {
+        return CartResponseDTO.builder()
+                .cartId(cart.getId())
+                .userId(cart.getUser().getId())
+                .totalPrice(cart.getTotalPrice())
+                .items(cart.getItems().stream().map(item ->
+                        CartItemResponseDTO.builder()
+                                .productId(item.getProduct().getId())
+                                .productName(item.getProduct().getName())
+                                .quantity(item.getQuantity())
+                                .price(item.getPrice())
+                                .subTotal(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                                .build()
+                ).collect(Collectors.toList()))
+                .build();
     }
 }
