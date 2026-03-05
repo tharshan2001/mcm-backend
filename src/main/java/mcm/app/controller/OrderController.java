@@ -7,7 +7,6 @@ import mcm.app.entity.User;
 import mcm.app.security.CustomUserDetails;
 import mcm.app.service.OrderService;
 import mcm.app.service.PaymentService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,11 +22,13 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/orders")
 public class OrderController {
 
-    @Autowired
-    private OrderService orderService;
+    private final OrderService orderService;
+    private final PaymentService paymentService;
 
-    @Autowired
-    private PaymentService paymentService;
+    public OrderController(OrderService orderService, PaymentService paymentService) {
+        this.orderService = orderService;
+        this.paymentService = paymentService;
+    }
 
     // Step 1: Create PaymentIntent
     @PreAuthorize("hasRole('CUSTOMER')")
@@ -45,47 +46,41 @@ public class OrderController {
         ));
     }
 
-    // Step 2: Confirm payment and place order
+    // Step 2: Confirm payment and place order using addressId
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/checkout")
     public ResponseEntity<?> checkoutOrder(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @RequestParam String shippingAddress,
+            @RequestParam Long addressId,
             @RequestParam String paymentIntentId) {
 
         User user = principal.getUser();
 
         try {
-            // Mark payment success
             paymentService.markPaymentSuccess(paymentIntentId);
 
-            // Place order and clear cart
-            Order order = orderService.placeOrder(user, shippingAddress);
+            // Place order using internal address fetch
+            Order order = orderService.placeOrder(user, addressId);
 
             OrderResponseDTO dto = orderService.toOrderResponseDTO(order);
             return ResponseEntity.ok(dto);
 
         } catch (RuntimeException e) {
-            // Handle empty cart or other runtime issues
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            // Handle unexpected errors
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Something went wrong. Please try again."));
         }
     }
 
-    // View user's orders
+    // Get orders of authenticated user
     @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/my")
     public ResponseEntity<List<OrderResponseDTO>> myOrders(
             @AuthenticationPrincipal CustomUserDetails principal) {
 
         User user = principal.getUser();
-
         List<OrderResponseDTO> orders = orderService.getOrdersByUser(user)
                 .stream()
                 .map(orderService::toOrderResponseDTO)

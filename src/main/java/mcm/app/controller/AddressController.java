@@ -1,12 +1,19 @@
 package mcm.app.controller;
 
-import mcm.app.entity.Address;
+import mcm.app.dto.AddressRequestDTO;
+import mcm.app.dto.AddressResponseDTO;
+import mcm.app.entity.User;
+import mcm.app.security.CustomUserDetails;
 import mcm.app.service.AddressService;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/addresses")
@@ -19,35 +26,90 @@ public class AddressController {
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Address>> getAddressesByUser(@PathVariable Long userId) {
-        return ResponseEntity.ok(addressService.getAllAddressesByUserId(userId));
+    @PostMapping
+    public ResponseEntity<?> createAddress(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @RequestBody AddressRequestDTO dto) {
+
+        try {
+
+            User user = principal.getUser();
+
+            AddressResponseDTO response = addressService.createAddress(user, dto);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (Exception e) {
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
-    @PostMapping("/user/{userId}")
-    public ResponseEntity<Address> createAddress(@PathVariable Long userId, @RequestBody Address address) {
-        return ResponseEntity.ok(addressService.addAddress(userId, address));
+    @GetMapping
+    public ResponseEntity<?> getAddresses(
+            @AuthenticationPrincipal CustomUserDetails principal) {
+
+        try {
+
+            User user = principal.getUser();
+
+            List<AddressResponseDTO> addresses =
+                    addressService.getUserAddresses(user);
+
+            return ResponseEntity.ok(addresses);
+
+        } catch (Exception e) {
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch addresses"));
+        }
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
     @PutMapping("/{addressId}")
-    public ResponseEntity<Address> updateAddress(@PathVariable Long addressId, @RequestBody Address address) {
-        return ResponseEntity.ok(addressService.updateAddress(addressId, address));
+    public ResponseEntity<?> updateAddress(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable Long addressId,
+            @RequestBody AddressRequestDTO dto) {
+
+        try {
+
+            User user = principal.getUser();
+
+            AddressResponseDTO updated =
+                    addressService.updateAddress(user, addressId, dto);
+
+            return ResponseEntity.ok(updated);
+
+        } catch (RuntimeException e) {
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
     @DeleteMapping("/{addressId}")
-    public ResponseEntity<Void> deleteAddress(@PathVariable Long addressId) {
-        addressService.deleteAddress(addressId);
-        return ResponseEntity.noContent().build();
-    }
+    public ResponseEntity<?> deleteAddress(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable Long addressId) {
 
-    @PreAuthorize("hasRole('CUSTOMER')")
-    @GetMapping("/{addressId}")
-    public ResponseEntity<Address> getAddress(@PathVariable Long addressId) {
-        return addressService.getAddressById(addressId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        try {
+
+            User user = principal.getUser();
+
+            addressService.deleteAddress(user, addressId);
+
+            return ResponseEntity.ok(
+                    Map.of("message", "Address deleted successfully")
+            );
+
+        } catch (RuntimeException e) {
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 }

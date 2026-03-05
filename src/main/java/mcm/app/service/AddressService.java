@@ -1,61 +1,95 @@
 package mcm.app.service;
 
+import mcm.app.dto.AddressRequestDTO;
+import mcm.app.dto.AddressResponseDTO;
 import mcm.app.entity.Address;
 import mcm.app.entity.User;
 import mcm.app.repository.AddressRepository;
-import mcm.app.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class AddressService {
 
     private final AddressRepository addressRepository;
-    private final UserRepository userRepository;
 
-    public AddressService(AddressRepository addressRepository, UserRepository userRepository) {
+    public AddressService(AddressRepository addressRepository) {
         this.addressRepository = addressRepository;
-        this.userRepository = userRepository;
     }
 
-    public List<Address> getAllAddressesByUserId(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        return addressRepository.findByUser(user);
-    }
+    public AddressResponseDTO createAddress(User user, AddressRequestDTO dto) {
 
-    public Address addAddress(Long userId, Address address) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        Address address = new Address();
         address.setUser(user);
-        return addressRepository.save(address);
+        address.setFullName(dto.getFullName());
+        address.setPhone(dto.getPhone());
+        address.setCountry(dto.getCountry());
+        address.setState(dto.getState());
+        address.setCity(dto.getCity());
+        address.setPostalCode(dto.getPostalCode());
+        address.setAddressLine(dto.getAddressLine());
+        address.setIsDefault(dto.getIsDefault());
+
+        Address saved = addressRepository.save(address);
+
+        return mapToDTO(saved);
     }
 
-    public Address updateAddress(Long addressId, Address updatedAddress) {
+    public List<AddressResponseDTO> getUserAddresses(User user) {
+        return addressRepository.findByUser(user)
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public AddressResponseDTO updateAddress(User user, Long addressId, AddressRequestDTO dto) {
+
         Address address = addressRepository.findById(addressId)
                 .orElseThrow(() -> new RuntimeException("Address not found"));
 
-        address.setFullName(updatedAddress.getFullName());
-        address.setPhone(updatedAddress.getPhone());
-        address.setCountry(updatedAddress.getCountry());
-        address.setState(updatedAddress.getState());
-        address.setCity(updatedAddress.getCity());
-        address.setPostalCode(updatedAddress.getPostalCode());
-        address.setAddressLine(updatedAddress.getAddressLine());
-        address.setIsDefault(updatedAddress.getIsDefault());
+        if (!address.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("You are not allowed to modify this address");
+        }
 
-        return addressRepository.save(address);
+        address.setFullName(dto.getFullName());
+        address.setPhone(dto.getPhone());
+        address.setCountry(dto.getCountry());
+        address.setState(dto.getState());
+        address.setCity(dto.getCity());
+        address.setPostalCode(dto.getPostalCode());
+        address.setAddressLine(dto.getAddressLine());
+        address.setIsDefault(dto.getIsDefault());
+
+        Address updated = addressRepository.save(address);
+
+        return mapToDTO(updated);
     }
 
-    public void deleteAddress(Long addressId) {
+    public void deleteAddress(User user, Long addressId) {
+
         Address address = addressRepository.findById(addressId)
                 .orElseThrow(() -> new RuntimeException("Address not found"));
+
+        if (!address.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("You are not allowed to delete this address");
+        }
+
         addressRepository.delete(address);
     }
 
-    public Optional<Address> getAddressById(Long addressId) {
-        return addressRepository.findById(addressId);
+    private AddressResponseDTO mapToDTO(Address address) {
+        return AddressResponseDTO.builder()
+                .id(address.getId())
+                .fullName(address.getFullName())
+                .phone(address.getPhone())
+                .country(address.getCountry())
+                .state(address.getState())
+                .city(address.getCity())
+                .postalCode(address.getPostalCode())
+                .addressLine(address.getAddressLine())
+                .isDefault(address.getIsDefault())
+                .build();
     }
 }

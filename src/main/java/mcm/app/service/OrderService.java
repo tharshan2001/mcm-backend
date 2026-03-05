@@ -3,6 +3,7 @@ package mcm.app.service;
 import mcm.app.dto.CartItemResponseDTO;
 import mcm.app.dto.OrderResponseDTO;
 import mcm.app.entity.*;
+import mcm.app.repository.AddressRepository;
 import mcm.app.repository.CartRepository;
 import mcm.app.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,11 +24,14 @@ public class OrderService {
     @Autowired
     private CartRepository cartRepository;
 
+    @Autowired
+    private AddressRepository addressRepository;
+
     /**
      * Place order after payment success and clear cart.
      */
     @Transactional
-    public Order placeOrder(User user, String shippingAddress) {
+    public Order placeOrder(User user, Long addressId) {
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("Cart is empty"));
 
@@ -35,10 +39,18 @@ public class OrderService {
             throw new RuntimeException("Cart is empty");
         }
 
+        // Fetch shipping address internally
+        Address address = addressRepository.findById(addressId)
+                .orElseThrow(() -> new RuntimeException("Address not found"));
+
+        if (!address.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Address does not belong to the user");
+        }
+
         // Create order
         Order order = new Order();
         order.setUser(user);
-        order.setShippingAddress(shippingAddress);
+        order.setShippingAddress(address.getAddressLine());
         order.setOrderDate(LocalDateTime.now());
         order.setOrderStatus("PLACED");
         order.setPaymentStatus("PAID");
@@ -81,9 +93,6 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    /**
-     * Convert Order entity to OrderResponseDTO
-     */
     public OrderResponseDTO toOrderResponseDTO(Order order) {
         List<CartItemResponseDTO> items = order.getItems().stream()
                 .map(item -> CartItemResponseDTO.builder()
