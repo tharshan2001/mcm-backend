@@ -6,7 +6,6 @@ import mcm.app.dto.ProductResponse;
 import mcm.app.entity.Product;
 import mcm.app.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -65,33 +64,24 @@ public class ProductController {
             @RequestPart("data") String requestJson,
             @RequestPart(value = "files", required = false) List<MultipartFile> files
     ) throws IOException {
-        // Convert JSON string to ProductRequest
         ObjectMapper objectMapper = new ObjectMapper();
         ProductRequest request = objectMapper.readValue(requestJson, ProductRequest.class);
 
-        if (files != null) {
-            request.setFiles(files);
-        }
+        if (files != null) request.setFiles(files);
 
         Product product = productService.createProductFromRequest(request);
         return ResponseEntity.ok(mapToResponse(product));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping(
-            value = "/{id}",
-            consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE }
-    )
+    @PutMapping("/{id}")
     public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable Long id,
-            @RequestPart(value = "data", required = false) ProductRequest requestPart,
-            @RequestBody(required = false) ProductRequest requestBody,
+            @RequestPart("data") String requestJson,
             @RequestPart(value = "files", required = false) List<MultipartFile> files
     ) throws IOException {
-        ProductRequest request = (requestPart != null) ? requestPart : requestBody;
-        if (request == null) {
-            throw new RuntimeException("Product data is missing");
-        }
+        ObjectMapper objectMapper = new ObjectMapper();
+        ProductRequest request = objectMapper.readValue(requestJson, ProductRequest.class);
 
         if (files != null) request.setFiles(files);
 

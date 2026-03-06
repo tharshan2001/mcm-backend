@@ -12,10 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.text.Normalizer;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 public class ProductService {
@@ -65,20 +63,16 @@ public class ProductService {
         product.setCategory(category);
         product.setSlug(generateUniqueSlug(request.getName()));
 
-        Set<ProductImage> images = new HashSet<>();
-
-        // Upload files to S3
+        // Add images
         if (request.getFiles() != null) {
             List<String> uploadedUrls = s3Utils.uploadProductImages(request.getFiles());
             uploadedUrls.forEach(url -> {
                 ProductImage img = new ProductImage();
                 img.setImageUrl(url);
-                img.setProduct(product);
-                images.add(img);
+                img.setProduct(product);           // owning side
+                product.getImages().add(img);      // inverse side
             });
         }
-
-        product.setImages(images);
 
         return productRepository.save(product);
     }
@@ -88,15 +82,15 @@ public class ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
+        if (!product.getName().equals(request.getName())) {
+            product.setSlug(generateUniqueSlug(request.getName()));
+        }
+
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
         product.setStockQuantity(request.getStockQuantity() != null ? request.getStockQuantity() : product.getStockQuantity());
         product.setArchived(request.getArchived() != null ? request.getArchived() : product.getArchived());
-
-        if (!product.getName().equals(request.getName())) {
-            product.setSlug(generateUniqueSlug(request.getName()));
-        }
 
         if (!product.getCategory().getId().equals(request.getCategoryId())) {
             ProductCategory category = categoryRepository.findById(request.getCategoryId())

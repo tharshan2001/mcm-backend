@@ -8,13 +8,15 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
  * Utility class for uploading files to AWS S3.
- * Updated to remove ACL usage (compatible with "bucket owner enforced").
+ * Ensures public URL works even with special characters in filenames.
  */
 @Component
 public class S3Utils {
@@ -35,19 +37,23 @@ public class S3Utils {
         if (folder == null || folder.isEmpty()) folder = "";
         else if (!folder.endsWith("/")) folder += "/";
 
+        // Generate unique key
         String key = folder + UUID.randomUUID() + "-" + file.getOriginalFilename();
 
-        // Remove .acl(...) completely
+        // Build request with Content-Type fallback
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucketName)
                 .key(key)
-                .contentType(file.getContentType())
+                .contentType(file.getContentType() != null ? file.getContentType() : "application/octet-stream")
                 .build();
 
         s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
 
-        // Public URL (bucket policy must allow public read)
-        return "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + key;
+        // URL encode the key to handle spaces/special characters
+        String encodedKey = URLEncoder.encode(key, StandardCharsets.UTF_8.toString()).replace("+", "%20");
+
+        // Return public URL
+        return "https://" + bucketName + ".s3." + region + ".amazonaws.com/" + encodedKey;
     }
 
     public String uploadProductImage(MultipartFile file) throws IOException {

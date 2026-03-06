@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
@@ -37,6 +38,6 @@ public class Product {
     @JsonBackReference // Prevent infinite recursion when serializing category
     private ProductCategory category;
 
-    @OneToMany(mappedBy="product")
-    private Set<ProductImage> images;
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ProductImage> images = new HashSet<>();
 }
