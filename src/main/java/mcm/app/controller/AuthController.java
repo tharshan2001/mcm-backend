@@ -1,6 +1,7 @@
 package mcm.app.controller;
 
 import mcm.app.dto.*;
+import mcm.app.entity.Role;
 import mcm.app.entity.User;
 import mcm.app.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +10,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -69,20 +72,28 @@ public class AuthController {
     }
 
     // --- Get current authenticated user ---
+
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Not authenticated"));
+                    .body("Not authenticated");
         }
 
         User user = authService.getCurrentUser(authentication);
-        return ResponseEntity.ok(Map.of(
-                "id", user.getId(),
-                "fullName", user.getFullName(),
-                "email", user.getEmail(),
-                "roles", user.getRoles()
-        ));
+
+        Set<String> roles = user.getRoles()
+                .stream()
+                .map(Role::getName)
+                .collect(Collectors.toSet());
+
+        AuthMeResponse response = new AuthMeResponse(
+                user.getFullName(),
+                user.getEmail(),
+                roles
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     // --- Global Exception Handler ---

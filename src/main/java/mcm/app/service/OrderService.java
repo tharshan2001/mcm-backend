@@ -2,6 +2,7 @@ package mcm.app.service;
 
 import mcm.app.dto.CartItemResponseDTO;
 import mcm.app.dto.OrderResponseDTO;
+import mcm.app.dto.ProductResponse;
 import mcm.app.entity.*;
 import mcm.app.repository.AddressRepository;
 import mcm.app.repository.CartRepository;
@@ -57,7 +58,7 @@ public class OrderService {
 
         // Calculate total
         BigDecimal total = cart.getItems().stream()
-                .map(CartItem::getPrice)
+                .map(item -> item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         order.setTotalPrice(total);
 
@@ -67,7 +68,7 @@ public class OrderService {
             orderItem.setOrder(order);
             orderItem.setProduct(cartItem.getProduct());
             orderItem.setQuantity(cartItem.getQuantity());
-            orderItem.setPrice(cartItem.getPrice());
+            orderItem.setPrice(cartItem.getProduct().getPrice()); // unit price
             order.getItems().add(orderItem);
         });
 
@@ -93,15 +94,34 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    /**
+     * Convert Order entity to OrderResponseDTO with full product details.
+     */
     public OrderResponseDTO toOrderResponseDTO(Order order) {
         List<CartItemResponseDTO> items = order.getItems().stream()
-                .map(item -> CartItemResponseDTO.builder()
-                        .productId(item.getProduct().getId())
-                        .productName(item.getProduct().getName())
-                        .quantity(item.getQuantity())
-                        .price(item.getPrice())
-                        .subTotal(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                        .build())
+                .map(orderItem -> {
+                    Product product = orderItem.getProduct();
+                    ProductResponse productResponse = new ProductResponse();
+                    productResponse.setId(product.getId());
+                    productResponse.setName(product.getName());
+                    productResponse.setSlug(product.getSlug());
+                    productResponse.setDescription(product.getDescription());
+                    productResponse.setPrice(product.getPrice());
+                    productResponse.setStockQuantity(product.getStockQuantity());
+                    productResponse.setArchived(product.getArchived());
+                    productResponse.setCategoryId(product.getCategory().getId());
+                    productResponse.setCategoryName(product.getCategory().getName());
+                    productResponse.setImages(product.getImages().stream()
+                            .map(img -> img.getImageUrl())
+                            .toList());
+
+                    return CartItemResponseDTO.builder()
+                            .product(productResponse)
+                            .quantity(orderItem.getQuantity())
+                            .price(product.getPrice()) // unit price
+                            .subTotal(product.getPrice().multiply(BigDecimal.valueOf(orderItem.getQuantity())))
+                            .build();
+                })
                 .collect(Collectors.toList());
 
         return OrderResponseDTO.builder()

@@ -9,9 +9,8 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class CartItemResponseDTO {
-    private Long productId;
-    private String productName;
+    private ProductResponse product;  // full product details
     private Integer quantity;
-    private BigDecimal price;
-    private BigDecimal subTotal; // price * quantity
+    private BigDecimal price;         // unit price
+    private BigDecimal subTotal;      // price * quantity
 }

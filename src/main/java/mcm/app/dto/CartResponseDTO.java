@@ -12,6 +12,6 @@ import java.util.List;
 public class CartResponseDTO {
     private Long cartId;
     private Long userId;
-    private BigDecimal totalPrice;
+    private BigDecimal totalPrice;           // sum of all subTotals
     private List<CartItemResponseDTO> items;
 }

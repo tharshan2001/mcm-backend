@@ -2,6 +2,7 @@ package mcm.app.service;
 
 import mcm.app.dto.CartItemResponseDTO;
 import mcm.app.dto.CartResponseDTO;
+import mcm.app.dto.ProductResponse;
 import mcm.app.entity.Cart;
 import mcm.app.entity.CartItem;
 import mcm.app.entity.Product;
@@ -49,13 +50,11 @@ public class CartService {
         if (existingItem.isPresent()) {
             CartItem item = existingItem.get();
             item.setQuantity(item.getQuantity() + quantity);
-            item.setPrice(product.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
         } else {
             CartItem newItem = new CartItem();
             newItem.setCart(cart);
             newItem.setProduct(product);
             newItem.setQuantity(quantity);
-            newItem.setPrice(product.getPrice().multiply(BigDecimal.valueOf(quantity)));
             cart.getItems().add(newItem);
         }
 
@@ -93,7 +92,6 @@ public class CartService {
             cart.getItems().remove(item);
         } else {
             item.setQuantity(newQuantity);
-            item.setPrice(item.getProduct().getPrice().multiply(BigDecimal.valueOf(newQuantity)));
         }
 
         recalcTotal(cart);
@@ -119,26 +117,42 @@ public class CartService {
     // Utility: recalc total price
     private void recalcTotal(Cart cart) {
         BigDecimal total = cart.getItems().stream()
-                .map(CartItem::getPrice)
+                .map(item -> item.getProduct().getPrice()
+                        .multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         cart.setTotalPrice(total);
     }
 
-    // Utility: map to DTO
+    // Utility: map to DTO with full product details
     private CartResponseDTO mapToDto(Cart cart) {
         return CartResponseDTO.builder()
                 .cartId(cart.getId())
                 .userId(cart.getUser().getId())
                 .totalPrice(cart.getTotalPrice())
-                .items(cart.getItems().stream().map(item ->
-                        CartItemResponseDTO.builder()
-                                .productId(item.getProduct().getId())
-                                .productName(item.getProduct().getName())
-                                .quantity(item.getQuantity())
-                                .price(item.getPrice())
-                                .subTotal(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                                .build()
-                ).collect(Collectors.toList()))
+                .items(cart.getItems().stream().map(item -> {
+                    ProductResponse productResponse = new ProductResponse();
+                    Product product = item.getProduct();
+                    productResponse.setId(product.getId());
+                    productResponse.setName(product.getName());
+                    productResponse.setSlug(product.getSlug());
+                    productResponse.setDescription(product.getDescription());
+                    productResponse.setPrice(product.getPrice());
+                    productResponse.setStockQuantity(product.getStockQuantity());
+                    productResponse.setArchived(product.getArchived());
+                    productResponse.setCategoryId(product.getCategory().getId());
+                    productResponse.setCategoryName(product.getCategory().getName());
+                    productResponse.setImages(product.getImages().stream()
+                            .map(img -> img.getImageUrl())
+                            .toList());
+
+                    return CartItemResponseDTO.builder()
+                            .product(productResponse)
+                            .quantity(item.getQuantity())
+                            .price(product.getPrice())
+                            .subTotal(product.getPrice()
+                                    .multiply(BigDecimal.valueOf(item.getQuantity())))
+                            .build();
+                }).toList())
                 .build();
     }
 }
