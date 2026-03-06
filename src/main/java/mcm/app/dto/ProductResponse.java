@@ -6,9 +6,13 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ * DTO for returning product data in API responses.
+ */
 @Getter
 @Setter
 public class ProductResponse {
+
     private Long id;
     private String name;
     private String slug;

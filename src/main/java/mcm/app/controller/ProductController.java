@@ -1,18 +1,19 @@
 package mcm.app.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import mcm.app.dto.ProductRequest;
 import mcm.app.dto.ProductResponse;
 import mcm.app.entity.Product;
-import mcm.app.entity.ProductImage;
 import mcm.app.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/products")
@@ -32,21 +33,22 @@ public class ProductController {
         response.setArchived(product.getArchived());
         response.setCategoryId(product.getCategory().getId());
         response.setCategoryName(product.getCategory().getName());
-
-        Set<ProductImage> images = product.getImages();
-        if (images != null) {
-            response.setImages(images.stream().map(ProductImage::getImageUrl).collect(Collectors.toList()));
+        if (product.getImages() != null) {
+            response.setImages(
+                    product.getImages().stream()
+                            .map(img -> img.getImageUrl())
+                            .toList()
+            );
         }
         return response;
     }
 
+    // ---------------- PUBLIC ----------------
     @GetMapping
     public ResponseEntity<List<ProductResponse>> getAll() {
-        List<ProductResponse> response = productService.getAllProducts()
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(
+                productService.getAllProducts().stream().map(this::mapToResponse).toList()
+        );
     }
 
     @GetMapping("/{slug}")
@@ -56,18 +58,45 @@ public class ProductController {
         return ResponseEntity.ok(mapToResponse(product));
     }
 
+    // ---------------- ADMIN ----------------
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping
-    public ResponseEntity<ProductResponse> create(@RequestBody ProductRequest request) {
+    @PostMapping("/create")
+    public ResponseEntity<ProductResponse> createProduct(
+            @RequestPart("data") String requestJson,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files
+    ) throws IOException {
+        // Convert JSON string to ProductRequest
+        ObjectMapper objectMapper = new ObjectMapper();
+        ProductRequest request = objectMapper.readValue(requestJson, ProductRequest.class);
+
+        if (files != null) {
+            request.setFiles(files);
+        }
+
         Product product = productService.createProductFromRequest(request);
         return ResponseEntity.ok(mapToResponse(product));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/{id}")
-    public ResponseEntity<ProductResponse> update(@PathVariable Long id, @RequestBody ProductRequest request) {
-        Product updatedProduct = productService.updateProductFromRequest(id, request);
-        return ResponseEntity.ok(mapToResponse(updatedProduct));
+    @PutMapping(
+            value = "/{id}",
+            consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE }
+    )
+    public ResponseEntity<ProductResponse> updateProduct(
+            @PathVariable Long id,
+            @RequestPart(value = "data", required = false) ProductRequest requestPart,
+            @RequestBody(required = false) ProductRequest requestBody,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files
+    ) throws IOException {
+        ProductRequest request = (requestPart != null) ? requestPart : requestBody;
+        if (request == null) {
+            throw new RuntimeException("Product data is missing");
+        }
+
+        if (files != null) request.setFiles(files);
+
+        Product updated = productService.updateProductFromRequest(id, request);
+        return ResponseEntity.ok(mapToResponse(updated));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -77,26 +106,13 @@ public class ProductController {
         return ResponseEntity.ok("Product deleted successfully");
     }
 
-    // Archive or unarchive a product
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{id}/archive")
-    public ResponseEntity<ProductResponse> archiveProduct(@PathVariable Long id,
-                                                          @RequestParam boolean archived) {
+    public ResponseEntity<ProductResponse> archiveProduct(
+            @PathVariable Long id,
+            @RequestParam boolean archived
+    ) {
         Product product = productService.setArchived(id, archived);
-        // Map to response manually since we don't use mappingService
-        ProductResponse response = new ProductResponse();
-        response.setId(product.getId());
-        response.setName(product.getName());
-        response.setDescription(product.getDescription());
-        response.setPrice(product.getPrice());
-        response.setStockQuantity(product.getStockQuantity());
-        response.setArchived(product.getArchived());
-        response.setSlug(product.getSlug());
-        response.setCategoryId(product.getCategory().getId());
-        response.setImages(product.getImages().stream()
-                .map(img -> img.getImageUrl())
-                .toList());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(mapToResponse(product));
     }
 }
