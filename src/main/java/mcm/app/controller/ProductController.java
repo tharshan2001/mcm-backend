@@ -105,4 +105,18 @@ public class ProductController {
         Product product = productService.setArchived(id, archived);
         return ResponseEntity.ok(mapToResponse(product));
     }
+
+    // Infinite scroll API using DTO
+    @GetMapping("/scroll")
+    public ResponseEntity<List<ProductResponse>> getProductsForScroll(
+            @RequestParam(required = false) Long cursor
+    ) {
+        List<Product> products = productService.getProductsForInfiniteScroll(cursor);
+
+        List<ProductResponse> responseList = products.stream()
+                .map(this::mapToResponse)
+                .toList();
+
+        return ResponseEntity.ok(responseList);
+    }
 }

@@ -131,4 +131,14 @@ public class ProductService {
         product.setArchived(archived);
         return productRepository.save(product);
     }
+
+
+    public List<Product> getProductsForInfiniteScroll(Long cursorId) {
+        if (cursorId == null) {
+            // First page
+            return productRepository.findTop10ByOrderByIdAsc();
+        }
+        // Subsequent pages: get next 10 products after cursor
+        return productRepository.findTop10ByIdGreaterThanOrderByIdAsc(cursorId);
+    }
 }
