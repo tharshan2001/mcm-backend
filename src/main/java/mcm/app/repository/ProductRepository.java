@@ -14,4 +14,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // First load
     List<Product> findTop10ByOrderByIdAsc();
+
+    List<Product> findByArchivedFalse();
+
 }

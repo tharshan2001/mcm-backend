@@ -99,4 +99,51 @@ public class OrderController {
         Order order = orderService.updateOrderStatus(orderId, status);
         return ResponseEntity.ok(orderService.toOrderResponseDTO(order));
     }
+
+    // Get single order by ID
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @GetMapping("/my/{orderId}")
+    public ResponseEntity<?> getOrderById(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable Long orderId) {
+
+        User user = principal.getUser();
+
+        try {
+            Order order = orderService.getOrderById(orderId, user);
+            OrderResponseDTO dto = orderService.toOrderResponseDTO(order);
+            return ResponseEntity.ok(dto);
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/scroll")
+    public ResponseEntity<List<OrderResponseDTO>> getOrdersForScroll(
+            @RequestParam(required = false) Long cursor) {
+
+        List<Order> orders = orderService.getOrdersForInfiniteScroll(cursor);
+
+        List<OrderResponseDTO> response = orders.stream()
+                .map(orderService::toOrderResponseDTO)
+                .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/{orderId}")
+    public ResponseEntity<OrderResponseDTO> getOrderByIdAdmin(
+            @PathVariable Long orderId) {
+
+        Order order = orderService.getOrderByIdAdmin(orderId);
+        return ResponseEntity.ok(orderService.toOrderResponseDTO(order));
+    }
+
+
+
 }

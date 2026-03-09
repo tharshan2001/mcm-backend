@@ -126,7 +126,7 @@ public class OrderService {
 
         return OrderResponseDTO.builder()
                 .orderId(order.getId())
-                .userId(order.getUser().getId())
+                .username(order.getUser().getFullName())
                 .shippingAddress(order.getShippingAddress())
                 .orderStatus(order.getOrderStatus())
                 .paymentStatus(order.getPaymentStatus())
@@ -134,5 +134,34 @@ public class OrderService {
                 .orderDate(order.getOrderDate())
                 .items(items)
                 .build();
+    }
+
+    public Order getOrderById(Long orderId, User user) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Ensure the order belongs to the logged-in user
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("You are not authorized to view this order");
+        }
+
+        return order;
+    }
+
+
+    public List<Order> getOrdersForInfiniteScroll(Long cursor) {
+        if (cursor == null) {
+            // First batch: latest 10 orders
+            return orderRepository.findTop10ByOrderByIdDesc();
+        } else {
+            // Subsequent batches: older orders (id < cursor)
+            return orderRepository.findTop10ByIdLessThanOrderByIdDesc(cursor);
+        }
+    }
+
+
+    public Order getOrderByIdAdmin(Long orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
     }
 }

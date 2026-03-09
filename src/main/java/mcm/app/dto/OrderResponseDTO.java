@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 public class OrderResponseDTO {
     private Long orderId;
-    private Long userId;
+    private String username;   // changed from userId
     private String shippingAddress;
     private String orderStatus;
     private String paymentStatus;
