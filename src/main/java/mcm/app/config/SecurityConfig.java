@@ -52,7 +52,7 @@ public class SecurityConfig {
                         // ✅ Allow preflight OPTIONS requests without authentication
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated() // change to .permitAll() if you want all endpoints public
+                        .anyRequest().permitAll()// change to .permitAll() if you want all endpoints public
                 );
 
         // Add JWT filter before UsernamePasswordAuthenticationFilter

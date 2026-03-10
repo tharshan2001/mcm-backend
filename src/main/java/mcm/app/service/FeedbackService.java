@@ -5,8 +5,8 @@ import mcm.app.entity.Product;
 import mcm.app.entity.User;
 import mcm.app.repository.FeedbackRepository;
 import mcm.app.repository.ProductRepository;
-import mcm.app.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -21,13 +21,8 @@ public class FeedbackService {
     @Autowired
     private ProductRepository productRepository;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    // Submit feedback
-    public Feedback submitFeedback(Long userId, Long productId, int rating, String comments) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    // Submit feedback using User object directly
+    public Feedback submitFeedback(User user, Long productId, int rating, String comments) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
@@ -45,7 +40,16 @@ public class FeedbackService {
         return feedbackRepository.findAll();
     }
 
-    public List<Feedback> getFeedbackByProduct(Long productId) {
-        return feedbackRepository.findByProductId(productId);
+
+    public List<Feedback> getFeedbackByProductWithPagination(Long productId, Long cursor, int limit) {
+        PageRequest pageRequest = PageRequest.of(0, limit); // wrap limit into Pageable
+
+        if (cursor == null) {
+            // First page: latest feedbacks
+            return feedbackRepository.findByProductIdOrderByIdDesc(productId, pageRequest);
+        } else {
+            // Next page: feedbacks with ID < cursor
+            return feedbackRepository.findByProductIdAndIdLessThanOrderByIdDesc(productId, cursor, pageRequest);
+        }
     }
 }
