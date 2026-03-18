@@ -12,8 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.text.Normalizer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class ProductService {
@@ -140,5 +142,20 @@ public class ProductService {
         }
         // Subsequent pages: get next 10 products after cursor
         return productRepository.findTop10ByIdGreaterThanOrderByIdAsc(cursorId);
+    }
+
+    public List<Product> getRandomRelatedProducts(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        int limit = ThreadLocalRandom.current().nextInt(7, 11); // 7 to 10 random products
+        List<Product> relatedProducts = productRepository.findRandomRelatedProducts(
+                product.getCategory().getId(), productId, limit
+        );
+
+        // Optional: shuffle for extra randomness
+        Collections.shuffle(relatedProducts);
+
+        return relatedProducts;
     }
 }

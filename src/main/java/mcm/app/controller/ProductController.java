@@ -120,5 +120,16 @@ public class ProductController {
         return ResponseEntity.ok(responseList);
     }
 
+    @GetMapping("/{id}/related")
+    public ResponseEntity<List<ProductResponse>> getRelatedProducts(@PathVariable Long id) {
+        List<Product> relatedProducts = productService.getRandomRelatedProducts(id);
+
+        List<ProductResponse> responseList = relatedProducts.stream()
+                .map(this::mapToResponse)
+                .toList();
+
+        return ResponseEntity.ok(responseList);
+    }
+
 
 }
