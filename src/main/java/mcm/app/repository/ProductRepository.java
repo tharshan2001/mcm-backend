@@ -24,4 +24,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findRandomRelatedProducts(@Param("categoryId") Long categoryId,
                                             @Param("productId") Long productId,
                                             @Param("limit") int limit);
+
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.archived = false")
+    Long countActiveProducts();
 }
