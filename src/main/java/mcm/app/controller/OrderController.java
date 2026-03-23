@@ -7,6 +7,7 @@ import mcm.app.entity.User;
 import mcm.app.security.CustomUserDetails;
 import mcm.app.service.OrderService;
 import mcm.app.service.PaymentService;
+import mcm.app.service.CartService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,20 +25,23 @@ public class OrderController {
 
     private final OrderService orderService;
     private final PaymentService paymentService;
+    private final CartService cartService;
 
-    public OrderController(OrderService orderService, PaymentService paymentService) {
+    public OrderController(OrderService orderService, PaymentService paymentService, CartService cartService) {
         this.orderService = orderService;
         this.paymentService = paymentService;
+        this.cartService = cartService;
     }
 
     // Step 1: Create PaymentIntent
     @PreAuthorize("hasRole('CUSTOMER')")
     @PostMapping("/pay")
     public ResponseEntity<Map<String, String>> createPayment(
-            @AuthenticationPrincipal CustomUserDetails principal,
-            @RequestParam BigDecimal amount) throws Exception {
+            @AuthenticationPrincipal CustomUserDetails principal) throws Exception {
 
         User user = principal.getUser();
+        BigDecimal amount = cartService.getCart(user).getTotalPrice();
+        
         PaymentIntent intent = paymentService.createPaymentIntent(user, amount);
 
         return ResponseEntity.ok(Map.of(
@@ -52,15 +56,15 @@ public class OrderController {
     public ResponseEntity<?> checkoutOrder(
             @AuthenticationPrincipal CustomUserDetails principal,
             @RequestParam Long addressId,
-            @RequestParam String paymentIntentId) {
+            @RequestParam String paymentIntentId,
+            @RequestParam(required = false) String couponCode) {
 
         User user = principal.getUser();
 
         try {
             paymentService.markPaymentSuccess(paymentIntentId);
 
-            // Place order using internal address fetch
-            Order order = orderService.placeOrder(user, addressId);
+            Order order = orderService.placeOrder(user, addressId, couponCode);
 
             OrderResponseDTO dto = orderService.toOrderResponseDTO(order);
             return ResponseEntity.ok(dto);

@@ -34,4 +34,10 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Address> addresses;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "user_used_coupons",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "coupon_id"))
+    private Set<Coupon> usedCoupons;
 }

@@ -17,6 +17,9 @@ public class OrderResponseDTO {
     private String orderStatus;
     private String paymentStatus;
     private BigDecimal totalPrice;
+    private BigDecimal discountAmount;
+    private String couponCode;
+    private String couponDescription;
     private LocalDateTime orderDate;
     private List<CartItemResponseDTO> items;
 }

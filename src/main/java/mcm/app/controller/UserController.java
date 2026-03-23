@@ -1,6 +1,8 @@
 package mcm.app.controller;
 
+import mcm.app.dto.CouponResponse;
 import mcm.app.dto.UserResponseDTO;
+import mcm.app.entity.Coupon;
 import mcm.app.entity.User;
 import mcm.app.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,12 +20,6 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    /**
-     * Admin can get customers with infinite scroll
-     *
-     * @param cursor optional userId of the last user from previous page
-     * @param limit  number of users to return
-     */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/customers/scroll")
     public ResponseEntity<List<UserResponseDTO>> getCustomersForScroll(
@@ -39,13 +35,32 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    // Mapper
     private UserResponseDTO mapToDTO(User user) {
         UserResponseDTO dto = new UserResponseDTO();
         dto.setId(user.getId());
         dto.setFullName(user.getFullName());
         dto.setEmail(user.getEmail());
         dto.setPhoneNumber(user.getPhoneNumber());
+        if (user.getUsedCoupons() != null) {
+            dto.setUsedCoupons(user.getUsedCoupons().stream()
+                    .map(this::mapCouponToDTO)
+                    .collect(Collectors.toList()));
+        }
         return dto;
+    }
+
+    private CouponResponse mapCouponToDTO(Coupon coupon) {
+        CouponResponse response = new CouponResponse();
+        response.setId(coupon.getId());
+        response.setCode(coupon.getCode());
+        response.setDiscountType(coupon.getDiscountType());
+        response.setDiscountValue(coupon.getDiscountValue());
+        response.setMinOrderAmount(coupon.getMinOrderAmount());
+        response.setMaxUsage(coupon.getMaxUsage());
+        response.setUsedCount(coupon.getUsedCount());
+        response.setExpiryDate(coupon.getExpiryDate());
+        response.setActive(coupon.isActive());
+        response.setDescription(coupon.getDescription());
+        return response;
     }
 }

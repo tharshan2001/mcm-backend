@@ -28,11 +28,14 @@ public class OrderService {
     @Autowired
     private AddressRepository addressRepository;
 
-    /**
-     * Place order after payment success and clear cart.
-     */
+    @Autowired
+    private CouponService couponService;
+
+    @Autowired
+    private UserService userService;
+
     @Transactional
-    public Order placeOrder(User user, Long addressId) {
+    public Order placeOrder(User user, Long addressId, String couponCode) {
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("Cart is empty"));
 
@@ -40,7 +43,6 @@ public class OrderService {
             throw new RuntimeException("Cart is empty");
         }
 
-        // Fetch shipping address internally
         Address address = addressRepository.findById(addressId)
                 .orElseThrow(() -> new RuntimeException("Address not found"));
 
@@ -48,7 +50,6 @@ public class OrderService {
             throw new RuntimeException("Address does not belong to the user");
         }
 
-        // Create order
         Order order = new Order();
         order.setUser(user);
         order.setShippingAddress(address.getAddressLine());
@@ -56,31 +57,66 @@ public class OrderService {
         order.setOrderStatus("PLACED");
         order.setPaymentStatus("PAID");
 
-        // Calculate total
         BigDecimal total = cart.getItems().stream()
                 .map(item -> item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        order.setTotalPrice(total);
 
-        // Map cart items to order items
+        Coupon appliedCoupon = null;
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (couponCode != null && !couponCode.isEmpty()) {
+            appliedCoupon = couponService.getCouponByCode(couponCode);
+            
+            if (user.getUsedCoupons() != null && user.getUsedCoupons().contains(appliedCoupon)) {
+                throw new RuntimeException("You have already used this coupon");
+            }
+            
+            if (!couponService.isCouponValid(appliedCoupon, total)) {
+                throw new RuntimeException("Coupon is not valid or expired");
+            }
+
+            discountAmount = calculateDiscount(appliedCoupon, total);
+            total = total.subtract(discountAmount);
+            order.setTotalPrice(total);
+            order.setCoupon(appliedCoupon);
+            order.setDiscountAmount(discountAmount);
+
+            couponService.incrementUsage(appliedCoupon.getId());
+
+            if (user.getUsedCoupons() == null) {
+                user.setUsedCoupons(new java.util.HashSet<>());
+            }
+            user.getUsedCoupons().add(appliedCoupon);
+            userService.saveUser(user);
+        } else {
+            order.setTotalPrice(total);
+        }
+
         cart.getItems().forEach(cartItem -> {
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
             orderItem.setProduct(cartItem.getProduct());
             orderItem.setQuantity(cartItem.getQuantity());
-            orderItem.setPrice(cartItem.getProduct().getPrice()); // unit price
+            orderItem.setPrice(cartItem.getProduct().getPrice());
             order.getItems().add(orderItem);
         });
 
-        // Save order (cascade ensures OrderItems are saved)
         Order savedOrder = orderRepository.save(order);
 
-        // Clear cart
         cart.getItems().clear();
         cart.setTotalPrice(BigDecimal.ZERO);
         cartRepository.save(cart);
 
         return savedOrder;
+    }
+
+    private BigDecimal calculateDiscount(Coupon coupon, BigDecimal orderTotal) {
+        if ("PERCENTAGE".equals(coupon.getDiscountType())) {
+            return orderTotal.multiply(coupon.getDiscountValue())
+                    .divide(BigDecimal.valueOf(100));
+        } else if ("FIXED".equals(coupon.getDiscountType())) {
+            return coupon.getDiscountValue().min(orderTotal);
+        }
+        return BigDecimal.ZERO;
     }
 
     public List<Order> getOrdersByUser(User user) {
@@ -131,6 +167,9 @@ public class OrderService {
                 .orderStatus(order.getOrderStatus())
                 .paymentStatus(order.getPaymentStatus())
                 .totalPrice(order.getTotalPrice())
+                .discountAmount(order.getDiscountAmount())
+                .couponCode(order.getCoupon() != null ? order.getCoupon().getCode() : null)
+                .couponDescription(order.getCoupon() != null ? order.getCoupon().getDescription() : null)
                 .orderDate(order.getOrderDate())
                 .items(items)
                 .build();

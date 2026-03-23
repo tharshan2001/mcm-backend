@@ -1,12 +1,14 @@
 package mcm.app.dto;
 
+import java.util.List;
+
 public class UserResponseDTO {
     private Long id;
     private String fullName;
     private String email;
     private String phoneNumber;
+    private List<CouponResponse> usedCoupons;
 
-    // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -18,4 +20,7 @@ public class UserResponseDTO {
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public List<CouponResponse> getUsedCoupons() { return usedCoupons; }
+    public void setUsedCoupons(List<CouponResponse> usedCoupons) { this.usedCoupons = usedCoupons; }
 }
