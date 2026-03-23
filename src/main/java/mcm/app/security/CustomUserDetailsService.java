@@ -16,7 +16,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+        
+        user = userRepository.findByIdWithUsedCoupons(user.getId())
+                .orElse(user);
 
-        return new CustomUserDetails(user); // <-- Important: wrap JPA User
+        return new CustomUserDetails(user);
     }
 }

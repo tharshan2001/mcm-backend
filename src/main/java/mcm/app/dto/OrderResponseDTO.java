@@ -12,14 +12,14 @@ import java.util.List;
 @Builder
 public class OrderResponseDTO {
     private Long orderId;
-    private String username;   // changed from userId
+    private String username;
     private String shippingAddress;
     private String orderStatus;
     private String paymentStatus;
     private BigDecimal totalPrice;
     private BigDecimal discountAmount;
     private String couponCode;
-    private String couponDescription;
     private LocalDateTime orderDate;
     private List<CartItemResponseDTO> items;
+    private AddressResponseDTO address;
 }

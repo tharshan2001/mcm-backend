@@ -8,6 +8,7 @@ public class UserResponseDTO {
     private String email;
     private String phoneNumber;
     private List<CouponResponse> usedCoupons;
+    private List<AddressResponseDTO> addresses;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -23,4 +24,7 @@ public class UserResponseDTO {
 
     public List<CouponResponse> getUsedCoupons() { return usedCoupons; }
     public void setUsedCoupons(List<CouponResponse> usedCoupons) { this.usedCoupons = usedCoupons; }
+
+    public List<AddressResponseDTO> getAddresses() { return addresses; }
+    public void setAddresses(List<AddressResponseDTO> addresses) { this.addresses = addresses; }
 }

@@ -3,6 +3,7 @@ package mcm.app.service;
 import mcm.app.dto.CartItemResponseDTO;
 import mcm.app.dto.OrderResponseDTO;
 import mcm.app.dto.ProductResponse;
+import mcm.app.dto.AddressResponseDTO;
 import mcm.app.entity.*;
 import mcm.app.repository.AddressRepository;
 import mcm.app.repository.CartRepository;
@@ -36,6 +37,8 @@ public class OrderService {
 
     @Transactional
     public Order placeOrder(User user, Long addressId, String couponCode) {
+        user = userService.getUserByIdWithUsedCoupons(user.getId());
+        
         Cart cart = cartRepository.findByUser(user)
                 .orElseThrow(() -> new RuntimeException("Cart is empty"));
 
@@ -66,7 +69,7 @@ public class OrderService {
         if (couponCode != null && !couponCode.isEmpty()) {
             appliedCoupon = couponService.getCouponByCode(couponCode);
             
-            if (user.getUsedCoupons() != null && user.getUsedCoupons().contains(appliedCoupon)) {
+            if (userService.hasUserUsedCoupon(user.getId(), appliedCoupon.getId())) {
                 throw new RuntimeException("You have already used this coupon");
             }
             
@@ -169,7 +172,6 @@ public class OrderService {
                 .totalPrice(order.getTotalPrice())
                 .discountAmount(order.getDiscountAmount())
                 .couponCode(order.getCoupon() != null ? order.getCoupon().getCode() : null)
-                .couponDescription(order.getCoupon() != null ? order.getCoupon().getDescription() : null)
                 .orderDate(order.getOrderDate())
                 .items(items)
                 .build();

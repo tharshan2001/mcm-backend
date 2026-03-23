@@ -45,4 +45,13 @@ public class UserService {
     public User saveUser(User user) {
         return userRepository.save(user);
     }
+    
+    public User getUserByIdWithUsedCoupons(Long userId) {
+        return userRepository.findByIdWithUsedCoupons(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+    
+    public boolean hasUserUsedCoupon(Long userId, Long couponId) {
+        return userRepository.hasUserUsedCoupon(userId, couponId);
+    }
 }

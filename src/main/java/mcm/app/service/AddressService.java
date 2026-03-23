@@ -21,6 +21,9 @@ public class AddressService {
 
     public AddressResponseDTO createAddress(User user, AddressRequestDTO dto) {
 
+        List<Address> existingAddresses = addressRepository.findByUser(user);
+        boolean isFirstAddress = existingAddresses.isEmpty();
+
         Address address = new Address();
         address.setUser(user);
         address.setFullName(dto.getFullName());
@@ -30,7 +33,16 @@ public class AddressService {
         address.setCity(dto.getCity());
         address.setPostalCode(dto.getPostalCode());
         address.setAddressLine(dto.getAddressLine());
-        address.setIsDefault(dto.getIsDefault());
+        
+        if (dto.getIsDefault() != null && dto.getIsDefault()) {
+            for (Address addr : existingAddresses) {
+                addr.setIsDefault(false);
+                addressRepository.save(addr);
+            }
+            address.setIsDefault(true);
+        } else {
+            address.setIsDefault(isFirstAddress);
+        }
 
         Address saved = addressRepository.save(address);
 
@@ -53,6 +65,17 @@ public class AddressService {
             throw new RuntimeException("You are not allowed to modify this address");
         }
 
+        if (dto.getIsDefault() != null && dto.getIsDefault()) {
+            List<Address> existingAddresses = addressRepository.findByUser(user);
+            for (Address addr : existingAddresses) {
+                if (!addr.getId().equals(addressId)) {
+                    addr.setIsDefault(false);
+                    addressRepository.save(addr);
+                }
+            }
+            address.setIsDefault(true);
+        }
+
         address.setFullName(dto.getFullName());
         address.setPhone(dto.getPhone());
         address.setCountry(dto.getCountry());
@@ -60,7 +83,6 @@ public class AddressService {
         address.setCity(dto.getCity());
         address.setPostalCode(dto.getPostalCode());
         address.setAddressLine(dto.getAddressLine());
-        address.setIsDefault(dto.getIsDefault());
 
         Address updated = addressRepository.save(address);
 
