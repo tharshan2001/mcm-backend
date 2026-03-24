@@ -11,8 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
@@ -148,14 +150,41 @@ public class ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new RuntimeException("Product not found"));
 
-        int limit = ThreadLocalRandom.current().nextInt(7, 11); // 7 to 10 random products
         List<Product> relatedProducts = productRepository.findRandomRelatedProducts(
-                product.getCategory().getId(), productId, limit
+                product.getCategory().getId(), productId, 6
         );
 
-        // Optional: shuffle for extra randomness
-        Collections.shuffle(relatedProducts);
-
         return relatedProducts;
+    }
+
+    public List<Product> getRelatedProductsByCategoryAndName(String categoryName, String name, int limit) {
+        if (name != null && !name.isEmpty()) {
+            return productRepository.findRelatedByCategoryNameAndName(categoryName, name, limit);
+        }
+        return productRepository.findRelatedByCategoryName(categoryName, limit);
+    }
+
+    public List<Product> getTrendingProducts(int limit) {
+        List<Product> trending = productRepository.findTrendingProducts(limit);
+        if (trending == null || trending.isEmpty()) {
+            return productRepository.findRandomProducts(limit);
+        }
+        return trending;
+    }
+
+    public List<Product> searchProducts(String keyword, Long categoryId, BigDecimal minPrice, 
+            BigDecimal maxPrice, Integer minStock, Integer maxStock, String sortBy) {
+        List<Product> products = productRepository.searchProducts(keyword, categoryId, minPrice, maxPrice, minStock, maxStock);
+        
+        if (sortBy == null) return products;
+        
+        return switch (sortBy) {
+            case "price_asc" -> products.stream().sorted(Comparator.comparing(Product::getPrice)).toList();
+            case "price_desc" -> products.stream().sorted(Comparator.comparing(Product::getPrice).reversed()).toList();
+            case "name_asc" -> products.stream().sorted(Comparator.comparing(Product::getName)).toList();
+            case "name_desc" -> products.stream().sorted(Comparator.comparing(Product::getName).reversed()).toList();
+            case "newest" -> products.stream().sorted(Comparator.comparing(Product::getId).reversed()).toList();
+            default -> products;
+        };
     }
 }

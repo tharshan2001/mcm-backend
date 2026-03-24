@@ -62,11 +62,21 @@ public class DashboardService {
         List<Object[]> results = orderRepository.getSalesChartData(startDate);
         
         return results.stream()
-                .map(row -> SalesChartData.builder()
-                        .date(((java.sql.Timestamp) row[0]).toLocalDateTime().toLocalDate())
-                        .revenue((BigDecimal) row[1])
-                        .orderCount(((Long) row[2]))
-                        .build())
+                .map(row -> {
+                    String dateStr;
+                    if (row[0] instanceof java.sql.Timestamp) {
+                        dateStr = ((java.sql.Timestamp) row[0]).toLocalDateTime().toLocalDate().toString();
+                    } else if (row[0] instanceof java.sql.Date) {
+                        dateStr = ((java.sql.Date) row[0]).toLocalDate().toString();
+                    } else {
+                        dateStr = row[0].toString();
+                    }
+                    return SalesChartData.builder()
+                            .date(dateStr)
+                            .revenue((BigDecimal) row[1])
+                            .orderCount(((Long) row[2]))
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 

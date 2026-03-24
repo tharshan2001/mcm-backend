@@ -3,6 +3,7 @@ package mcm.app.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import mcm.app.dto.ProductRequest;
 import mcm.app.dto.ProductResponse;
+import mcm.app.dto.ProductSearchRequest;
 import mcm.app.entity.Product;
 import mcm.app.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -128,6 +130,51 @@ public class ProductController {
                 .map(this::mapToResponse)
                 .toList();
 
+        return ResponseEntity.ok(responseList);
+    }
+
+    @GetMapping("/category/{categoryName}/related")
+    public ResponseEntity<List<ProductResponse>> getRelatedProductsByCategory(
+            @PathVariable String categoryName,
+            @RequestParam(required = false) String name,
+            @RequestParam(defaultValue = "6") int limit) {
+        List<Product> relatedProducts = productService.getRelatedProductsByCategoryAndName(categoryName, name, limit);
+
+        List<ProductResponse> responseList = relatedProducts.stream()
+                .map(this::mapToResponse)
+                .toList();
+
+        return ResponseEntity.ok(responseList);
+    }
+
+    @GetMapping("/trending")
+    public ResponseEntity<List<ProductResponse>> getTrendingProducts(
+            @RequestParam(defaultValue = "6") int limit) {
+        List<Product> trendingProducts = productService.getTrendingProducts(limit);
+
+        List<ProductResponse> responseList = trendingProducts.stream()
+                .map(this::mapToResponse)
+                .toList();
+
+        return ResponseEntity.ok(responseList);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<ProductResponse>> searchProducts(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) Integer minStock,
+            @RequestParam(required = false) Integer maxStock,
+            @RequestParam(required = false) String sortBy) {
+        
+        List<Product> products = productService.searchProducts(keyword, categoryId, minPrice, maxPrice, minStock, maxStock, sortBy);
+        
+        List<ProductResponse> responseList = products.stream()
+                .map(this::mapToResponse)
+                .toList();
+        
         return ResponseEntity.ok(responseList);
     }
 
