@@ -54,4 +54,38 @@ public class UserService {
     public boolean hasUserUsedCoupon(Long userId, Long couponId) {
         return userRepository.hasUserUsedCoupon(userId, couponId);
     }
+
+    @Transactional(readOnly = true)
+    public User getCustomerById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        if (user.getRoles().stream().noneMatch(r -> r.getName().equals("CUSTOMER"))) {
+            throw new RuntimeException("User is not a customer");
+        }
+        return user;
+    }
+
+    @Transactional
+    public User updateCustomer(Long id, String fullName, String email, String phoneNumber) {
+        User user = getCustomerById(id);
+        if (fullName != null && !fullName.isBlank()) {
+            user.setFullName(fullName);
+        }
+        if (email != null && !email.isBlank()) {
+            if (!email.equals(user.getEmail()) && userRepository.existsByEmail(email)) {
+                throw new RuntimeException("Email already in use");
+            }
+            user.setEmail(email);
+        }
+        if (phoneNumber != null) {
+            user.setPhoneNumber(phoneNumber);
+        }
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public void deleteCustomer(Long id) {
+        User user = getCustomerById(id);
+        userRepository.delete(user);
+    }
 }

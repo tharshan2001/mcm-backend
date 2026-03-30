@@ -1,6 +1,7 @@
 package mcm.app.service;
 
 import mcm.app.dto.LoginRequest;
+import mcm.app.dto.OtpRequest;
 import mcm.app.dto.SignupRequest;
 import mcm.app.entity.*;
 import mcm.app.repository.*;
@@ -34,6 +35,9 @@ public class AuthService {
     @Autowired
     private JwtUtils jwtUtils;
 
+    @Autowired
+    private OtpService otpService;
+
     // --- Login user and generate JWT ---
     public String login(LoginRequest request) {
         try {
@@ -47,16 +51,28 @@ public class AuthService {
         }
     }
 
-    // --- Register new user ---
-    public String register(SignupRequest request) {
+    // --- Register new user (Step 1: Send OTP) ---
+    public String sendOtp(SignupRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email is already taken");
+            throw new RuntimeException("User already exist");
+        }
+        return otpService.generateAndSendOtp(request.getEmail(), request.getFullName(), request.getPassword());
+    }
+
+    // --- Verify OTP and complete registration (Step 2) ---
+    public String verifyOtpAndRegister(OtpRequest request) {
+        OtpVerification otp = otpService.getPendingOtp(request.getEmail());
+        if (otp == null) {
+            throw new RuntimeException("No pending OTP verification found. Please register again.");
+        }
+        if (!otpService.verifyOtp(request.getEmail(), request.getOtpCode())) {
+            throw new RuntimeException("Invalid or expired OTP");
         }
 
         User user = new User();
-        user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setFullName(otp.getFullName());
+        user.setEmail(otp.getEmail());
+        user.setPassword(passwordEncoder.encode(otp.getPassword()));
 
         Set<Role> roles = new HashSet<>();
         Role customerRole = roleRepository.findByName("CUSTOMER")

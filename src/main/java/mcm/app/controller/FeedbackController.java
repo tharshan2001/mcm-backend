@@ -69,6 +69,39 @@ public class FeedbackController {
         return ResponseEntity.ok(response);
     }
 
+    // Customer edits their own feedback
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @PutMapping("/{id}")
+    public ResponseEntity<FeedbackResponseDTO> updateFeedback(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @RequestBody FeedbackRequestDTO request) {
+
+        User user = principal.getUser();
+
+        Feedback feedback = feedbackService.updateFeedback(
+                id,
+                user.getId(),
+                request.getRating(),
+                request.getComments()
+        );
+
+        return ResponseEntity.ok(mapToDTO(feedback));
+    }
+
+    // Customer deletes their own feedback
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteFeedback(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+
+        User user = principal.getUser();
+        feedbackService.deleteFeedback(id, user.getId());
+
+        return ResponseEntity.ok("Feedback deleted successfully");
+    }
+
     // Mapper method
     private FeedbackResponseDTO mapToDTO(Feedback feedback) {
         FeedbackResponseDTO dto = new FeedbackResponseDTO();

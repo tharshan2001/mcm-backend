@@ -1,6 +1,7 @@
 package mcm.app.controller;
 
 import mcm.app.dto.AddressResponseDTO;
+import mcm.app.dto.UserRequest;
 import mcm.app.dto.UserResponseDTO;
 import mcm.app.entity.Address;
 import mcm.app.entity.User;
@@ -33,6 +34,30 @@ public class UserController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/customers/{id}")
+    public ResponseEntity<UserResponseDTO> getCustomerById(@PathVariable Long id) {
+        User customer = userService.getCustomerById(id);
+        return ResponseEntity.ok(mapToDTO(customer));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/customers/{id}")
+    public ResponseEntity<UserResponseDTO> updateCustomer(
+            @PathVariable Long id,
+            @RequestBody UserRequest request
+    ) {
+        User updated = userService.updateCustomer(id, request.getFullName(), request.getEmail(), request.getPhoneNumber());
+        return ResponseEntity.ok(mapToDTO(updated));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/customers/{id}")
+    public ResponseEntity<String> deleteCustomer(@PathVariable Long id) {
+        userService.deleteCustomer(id);
+        return ResponseEntity.ok("Customer deleted successfully");
     }
 
     private UserResponseDTO mapToDTO(User user) {

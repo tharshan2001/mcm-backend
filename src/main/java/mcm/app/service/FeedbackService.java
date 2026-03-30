@@ -52,4 +52,31 @@ public class FeedbackService {
             return feedbackRepository.findByProductIdAndIdLessThanOrderByIdDesc(productId, cursor, pageRequest);
         }
     }
+
+    public Feedback getFeedbackById(Long id) {
+        return feedbackRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Feedback not found"));
+    }
+
+    public Feedback updateFeedback(Long feedbackId, Long userId, int rating, String comments) {
+        Feedback feedback = getFeedbackById(feedbackId);
+
+        if (!feedback.getUser().getId().equals(userId)) {
+            throw new RuntimeException("You can only edit your own feedback");
+        }
+
+        feedback.setRating(rating);
+        feedback.setComments(comments);
+        return feedbackRepository.save(feedback);
+    }
+
+    public void deleteFeedback(Long feedbackId, Long userId) {
+        Feedback feedback = getFeedbackById(feedbackId);
+
+        if (!feedback.getUser().getId().equals(userId)) {
+            throw new RuntimeException("You can only delete your own feedback");
+        }
+
+        feedbackRepository.delete(feedback);
+    }
 }

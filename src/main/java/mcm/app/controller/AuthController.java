@@ -43,11 +43,23 @@ public class AuthController {
         }
     }
 
-    // --- Registration ---
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody SignupRequest request) {
+    // --- Registration Step 1: Send OTP ---
+    @PostMapping("/register/send-otp")
+    public ResponseEntity<?> sendOtp(@RequestBody SignupRequest request) {
         try {
-            String message = authService.register(request);
+            String message = authService.sendOtp(request);
+            return ResponseEntity.ok(Map.of("message", message));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    // --- Registration Step 2: Verify OTP and Complete Registration ---
+    @PostMapping("/register/verify")
+    public ResponseEntity<?> verifyOtp(@RequestBody OtpRequest request) {
+        try {
+            String message = authService.verifyOtpAndRegister(request);
             return ResponseEntity.ok(Map.of("message", message));
         } catch (RuntimeException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
