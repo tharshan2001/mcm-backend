@@ -84,8 +84,16 @@ public class UserService {
     }
 
     @Transactional
-    public void deleteCustomer(Long id) {
+    public void deactivateCustomer(Long id) {
         User user = getCustomerById(id);
-        userRepository.delete(user);
+        user.setIsActive(false);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void activateCustomer(Long id) {
+        User user = getCustomerById(id);
+        user.setIsActive(true);
+        userRepository.save(user);
     }
 }

@@ -54,10 +54,17 @@ public class UserController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/customers/{id}")
-    public ResponseEntity<String> deleteCustomer(@PathVariable Long id) {
-        userService.deleteCustomer(id);
-        return ResponseEntity.ok("Customer deleted successfully");
+    @PatchMapping("/customers/{id}/deactivate")
+    public ResponseEntity<String> deactivateCustomer(@PathVariable Long id) {
+        userService.deactivateCustomer(id);
+        return ResponseEntity.ok("Customer deactivated successfully");
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/customers/{id}/activate")
+    public ResponseEntity<String> activateCustomer(@PathVariable Long id) {
+        userService.activateCustomer(id);
+        return ResponseEntity.ok("Customer activated successfully");
     }
 
     private UserResponseDTO mapToDTO(User user) {
@@ -66,6 +73,7 @@ public class UserController {
         dto.setFullName(user.getFullName());
         dto.setEmail(user.getEmail());
         dto.setPhoneNumber(user.getPhoneNumber());
+        dto.setIsActive(user.getIsActive());
         if (user.getAddresses() != null) {
             dto.setAddresses(user.getAddresses().stream()
                     .filter(Address::getIsDefault)

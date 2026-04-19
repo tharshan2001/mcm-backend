@@ -7,6 +7,7 @@ public class UserResponseDTO {
     private String fullName;
     private String email;
     private String phoneNumber;
+    private Boolean isActive;
     private List<CouponResponse> usedCoupons;
     private List<AddressResponseDTO> addresses;
 
@@ -21,6 +22,9 @@ public class UserResponseDTO {
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
 
     public List<CouponResponse> getUsedCoupons() { return usedCoupons; }
     public void setUsedCoupons(List<CouponResponse> usedCoupons) { this.usedCoupons = usedCoupons; }

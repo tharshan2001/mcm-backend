@@ -40,4 +40,7 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "coupon_id"))
     private Set<Coupon> usedCoupons;
+
+    @Column(nullable = false)
+    private Boolean isActive = true;
 }
